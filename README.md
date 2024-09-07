@@ -1,1 +1,1 @@
-# app-recommendation-app-based-ai
+# app-recommendation-service-based-ai
