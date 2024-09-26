@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="@drawable/rounded_background"
+    android:padding="8dp"
+    android:gravity="center_vertical">
+
+    <!-- 앱 아이콘 -->
+    <ImageView
+        android:id="@+id/app_icon"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="8dp"
+        android:src="@color/black" />
+
+    <!-- 앱 이름 -->
+    <TextView
+        android:id="@+id/app_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="앱 이름"
+        android:textSize="16sp"
+        android:textColor="@android:color/black"/>
+
+    <!-- 사용 시간 또는 클릭 수 -->
+    <TextView
+        android:id="@+id/app_info"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="2시간"
+        android:textSize="14sp"
+        android:textColor="@android:color/black" />
+</LinearLayout>

@@ -1,0 +1,3 @@
+com.example.ai_customizing.test
+style WhiteBackgroundDialogTheme
+style WhiteBackgroundTheme
