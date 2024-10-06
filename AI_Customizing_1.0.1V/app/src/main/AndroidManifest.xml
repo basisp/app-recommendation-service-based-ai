@@ -33,7 +33,7 @@
 
 
         <receiver
-            android:name=".Customizing_widget"
+            android:name=".widget.Customizing_widget"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.example.ai_customizing.ACTION_ENLARGE_IMAGE" />
@@ -50,7 +50,7 @@
 
 
         <receiver
-            android:name=".NewAppInstallReceiver"
+            android:name=".service.NewAppInstallReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.PACKAGE_REMOVED" />
@@ -71,10 +71,10 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".ServerMainActivity" />
-        <activity android:name=".ServerRegister" />
+        <activity android:name=".network.ServerMainActivity" />
+        <activity android:name=".network.ServerRegister" />
         <service
-            android:name=".MyAccessibilityService"
+            android:name=".service.MyAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="false">
             <intent-filter>

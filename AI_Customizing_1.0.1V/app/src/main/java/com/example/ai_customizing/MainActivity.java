@@ -3,7 +3,6 @@ package com.example.ai_customizing;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AppOpsManager;
@@ -30,13 +29,18 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import org.json.JSONArray;
+import com.example.ai_customizing.adepter.AppInfoAdapter;
+import com.example.ai_customizing.data.AppUsageFetcher;
+import com.example.ai_customizing.model.AppInfo;
+import com.example.ai_customizing.network.ServerMainActivity;
+import com.example.ai_customizing.service.MyAccessibilityService;
+import com.example.ai_customizing.service.NewAppInstallReceiver;
+import com.example.ai_customizing.utils.Utils;
+
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -157,16 +161,16 @@ public class MainActivity extends AppCompatActivity {
         int clickCount4 = MyAccessibilityService.getClickCount(this, appInfoList2.get(3).getPackageName());
 
         // 클릭 횟수 초기화
-        adapter2.updateTextAtPosition(0, String.valueOf(clickCount1));
-        adapter2.updateTextAtPosition(1, String.valueOf(clickCount2));
-        adapter2.updateTextAtPosition(2, String.valueOf(clickCount3));
-        adapter2.updateTextAtPosition(3, String.valueOf(clickCount4));
+        adapter2.updateTextAtPosition(0, String.valueOf(clickCount1)+"회");
+        adapter2.updateTextAtPosition(1, String.valueOf(clickCount2)+"회");
+        adapter2.updateTextAtPosition(2, String.valueOf(clickCount3)+"회");
+        adapter2.updateTextAtPosition(3, String.valueOf(clickCount4)+"회");
 
 
         //모든 사용 시록 정리 함수\
         long lastUpdateTime = sharedPreferences.getLong("lastUpdateTime", 0);
         long currentTime = System.currentTimeMillis();
-        if(currentTime - lastUpdateTime >= 24 * 60 * 60 * 1000 ){ //최종 업데이트로부터 24시간이 지나야 질문함
+        if(currentTime - lastUpdateTime >= 24 * 60 * 60 * 1000 || lastUpdateTime == 0){ //최종 업데이트로부터 24시간이 지나야 질문함 혹은 처음 실행했을 때.
             showUsageDialog();
         }
     }
@@ -240,10 +244,10 @@ public class MainActivity extends AppCompatActivity {
         appInfoList1.add(new AppInfo(appIcon4, Label4, AppUsage4, packageName4));
 
 
-        appInfoList2.add(new AppInfo(appIcon1, Label1, String.valueOf(clickCount1), packageName1));
-        appInfoList2.add(new AppInfo(appIcon2, Label2, String.valueOf(clickCount2), packageName2));
-        appInfoList2.add(new AppInfo(appIcon3, Label3, String.valueOf(clickCount3), packageName3));
-        appInfoList2.add(new AppInfo(appIcon4, Label4, String.valueOf(clickCount4), packageName4));
+        appInfoList2.add(new AppInfo(appIcon1, Label1, String.valueOf(clickCount1)+"회", packageName1));
+        appInfoList2.add(new AppInfo(appIcon2, Label2, String.valueOf(clickCount2)+"회", packageName2));
+        appInfoList2.add(new AppInfo(appIcon3, Label3, String.valueOf(clickCount3)+"회", packageName3));
+        appInfoList2.add(new AppInfo(appIcon4, Label4, String.valueOf(clickCount4)+"회", packageName4));
 
 
         recyclerView1.setAdapter(adapter1);

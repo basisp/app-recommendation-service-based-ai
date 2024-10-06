@@ -21,12 +21,15 @@
             android:textStyle="bold"
             android:layout_weight="1"/>
 
-        <ImageView
-            android:id="@+id/UsageLoge"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_marginStart="8dp"
-            android:src="@drawable/bar" />
+<!--        <ImageButton-->
+<!--            android:id="@+id/UsageLoge"-->
+<!--            android:layout_width="24dp"-->
+<!--            android:layout_height="24dp"-->
+<!--            android:layout_marginStart="8dp"-->
+<!--            android:src="@drawable/bar"-->
+<!--            android:background="@drawable/button_background_selector"-->
+<!--            android:contentDescription="Image Button"/>-->
+
     </LinearLayout>
 
     <!-- 앱 사용 시간 텍스트뷰 -->
@@ -38,12 +41,16 @@
         android:layout_marginTop="16dp" />
 
     <!-- 앱 사용 시간 리사이클러뷰 -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView_usage_time"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp" />
-
+        android:layout_height="200dp">
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView_usage_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" >
+        </androidx.recyclerview.widget.RecyclerView>
+    </ScrollView>
     <!-- '더 보기' 버튼 -->
     <Button
         android:id="@+id/button_more_usage"
@@ -52,30 +59,35 @@
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="16dp"
         android:backgroundTint="#3F51B5"
-        android:text="더 보기"
+        android:text="@string/the_see"
         android:textColor="@android:color/white" />
 
     <!-- 클릭 수 텍스트뷰 -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="클릭 수"
+        android:text="@string/count"
         android:textSize="16sp"
         android:layout_marginTop="24dp" />
 
-    <!-- 클릭 수 리사이클러뷰 -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView_click_count"
+
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp" />
+        android:layout_height="200dp">
+        <!-- 클릭 수 리사이클러뷰 -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView_click_count"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
+    </ScrollView>
 
     <!-- '더 보기' 버튼 -->
     <Button
         android:id="@+id/button_more_click"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="더 보기"
+        android:text="@string/the_see"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="16dp"
         android:backgroundTint="@color/purple_500"

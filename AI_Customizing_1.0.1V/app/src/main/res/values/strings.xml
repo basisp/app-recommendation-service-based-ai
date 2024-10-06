@@ -8,4 +8,6 @@
     <string name="accessibility_service_description">사용자 앱 클릭 횟수 추격 서?비?스?</string>
     <string name="appName">앱 이름</string>
     <string name="appInfo">2시간</string>
+    <string name="count">실행 횟수</string>
+    <string name="the_see">더 보기</string>
 </resources>
