@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">AI_Customizing</string>
+    <string name="appwidget_text">기본 앱</string>
+    <string name="add_widget">Add widget</string>
+    <string name="app_widget_description">This is an app widget description</string>
+    <string name="app_icon_desc">앱 아이콘입니다.</string>
+    <string name="appString">앱 이미지</string>
+    <string name="accessibility_service_description">사용자 앱 클릭 횟수 추격 서?비?스?</string>
+    <string name="appName">앱 이름</string>
+    <string name="appInfo">2시간</string>
+</resources>
