@@ -19,6 +19,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
@@ -27,10 +28,12 @@ public class AppUsageFetcher {
     private final String TAG = "AppUsageFetcher";
     private final UsageStatsManager usageStatsManager;
     private final PackageManager packageManager;
+    private Context context;
 
     public AppUsageFetcher(Context context) {
         usageStatsManager = (UsageStatsManager) context.getSystemService(Context.USAGE_STATS_SERVICE);
         packageManager = context.getPackageManager();
+        this.context = context;
     }
 
     public void fetchAndSaveAppsByCategory(Context context) throws PackageManager.NameNotFoundException {
@@ -68,28 +71,52 @@ public class AppUsageFetcher {
         // 앱 사용 시간을 기준으로 정렬
         usageStatsList.sort((o1, o2) -> Long.compare(o2.getTotalTimeInForeground(), o1.getTotalTimeInForeground()));
 
-
+        // 새 데이터를 저장할 List 생성
+        List<ExtendedApplicationInfo> appList = new ArrayList<>();
 
         // 앱 사용 통계와 사용자 설치 앱 목록을 결합
         for (UsageStats usageStats : usageStatsList) {
             String packageName = usageStats.getPackageName();
             try {
                 ApplicationInfo appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA);
-                if(StaticMethodClass.isExceptionSystemApp(appInfo.packageName)){ //특정 패키지의 앱이라면 SYSTEM 카테고리를 붙임
-                    ExtendedApplicationInfo extendedInfo = new ExtendedApplicationInfo(packageName, "SYSTEM", usageStats.getTotalTimeInForeground());
-                    // 파일에 앱 정보를 저장
+                if(StaticMethodClass.isExceptionSystemApp(appInfo.packageName)){
+                    //특정 패키지의 앱이라면 SYSTEM 카테고리를 붙임
+                    ExtendedApplicationInfo extendedInfo = new ExtendedApplicationInfo
+                            (packageName, "SYSTEM", usageStats.getTotalTimeInForeground());
+
+                    appList.add(extendedInfo); // List에 추가
                     saveAppToFileCategory(context, extendedInfo);
                     saveAppToFileAll(context, extendedInfo);
                 }
                 else if ((appInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0 ) { //시스탬 앱이 아닌 것만
                     // Google Play 스토어에서 카테고리 정보를 비동기적으로 가져옴
-                    fetchCategoryForApp(packageName, context, usageStats.getTotalTimeInForeground());
+                    fetchCategoryForApp(packageName, context, usageStats.getTotalTimeInForeground(), appList);
                 }
             } catch (PackageManager.NameNotFoundException e) {
                 Log.e(TAG, "앱 정보를 찾을 수 없습니다: " + packageName, e);
             }
         }
 
+        // 모든 패키지를 가져와 사용하지 않은 앱도 All_app.json 파일에 추가하는 로직
+        List<ApplicationInfo> allApps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA);
+        for (ApplicationInfo appInfo : allApps) {
+            String packageName = appInfo.packageName;
+
+            // 시스템 앱은 제외하되, 예외적인 시스템 앱은 포함
+            if ((appInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0 || StaticMethodClass.isExceptionSystemApp(packageName)) {
+                // List<ExtendedApplicationInfo>에서 해당 패키지가 이미 있는지 확인
+                boolean isAlreadyInList = appList.stream().anyMatch(app -> app.getPackageName().equals(packageName));
+
+                // List에 없는 앱만 처리
+                if (!isAlreadyInList) {
+                    // 시스템 앱이 아닌 경우 fetchCategoryForApp 사용
+                    fetchCategoryForApp(packageName, context, 0, appList); // 기본 사용 시간 0
+                }
+                else {
+                    Log.d(TAG, "appInfo : allApps => 이미 All_app.json에 추가된 앱");
+                }
+            }
+        }
 
     }
     //한달간의 기록 가져이고
@@ -119,13 +146,14 @@ public class AppUsageFetcher {
 
     private void saveAppToFileCategory(Context context, ExtendedApplicationInfo extendedInfo) {
         String categoryName = extendedInfo.getCategoryName(); // CATEGORY_ 제거 후 카테고리 이름 가져오기
+        Log.d(TAG, "saveAppToFileCategory : categoryName = " + categoryName);
         String fileNameCategory = categoryName + "_app.json"; //ex -> "VIDEO_PLAYERS_app.json"
         File fileCate = new File(context.getFilesDir(), fileNameCategory);
 
         try {
             // JSON 파일에 저장할 내용 생성
             JSONObject appData = new JSONObject();
-            appData.put("packageName", extendedInfo.getPackageName());
+            appData.put("package_name", extendedInfo.getPackageName());
             appData.put("category", categoryName);
             appData.put("usageTime", extendedInfo.getUsageTime());
 
@@ -143,10 +171,10 @@ public class AppUsageFetcher {
 
             for (int i = 0; i < appListCate.length(); i++) {
                 JSONObject existingAppData = appListCate.getJSONObject(i);
-                String existingPackageName = existingAppData.getString("packageName");
+                String existingPackageName = existingAppData.getString("package_name");
 
                 // 패키지가 동일하다면 usageTime 합산
-                if (existingPackageName.equals(appData.getString("packageName"))) {
+                if (existingPackageName.equals(appData.getString("package_name"))) {
                     long existingUsageTime = existingAppData.getLong("usageTime");
                     long newUsageTime = existingUsageTime + appData.getLong("usageTime");
                     existingAppData.put("usageTime", newUsageTime); // 사용 시간 업데이트
@@ -159,7 +187,7 @@ public class AppUsageFetcher {
             }
 
             // 피싱 오류 발생 여부 확인 후 추가
-            if (appListCate != null && !appData.getString("packageName").isEmpty()) {
+            if (appListCate != null && !appData.getString("package_name").isEmpty()) {
                 // 업데이트된 경우, 적절한 위치에 재배치
                 if (isUpdated) {
                     JSONObject updatedAppData = appListCate.getJSONObject(updatedIndex);
@@ -176,7 +204,7 @@ public class AppUsageFetcher {
                         else{// 업데이트된 앱의 사용 시간이 이전의 앱보다 더 많다면 한칸 위로 올라간다.
                             appListCate.put(updatedIndex, existingAppData);
                             appListCate.put(updatedIndex-1, appData);
-                            Log.d(TAG, categoryName + "_app.json사용 시간 업데이트 후 중요도가 올라감. : " + updatedAppData.getString("packageName"));
+                            Log.d(TAG, categoryName + "_app.json사용 시간 업데이트 후 중요도가 올라감. : " + updatedAppData.getString("package_name"));
                         }
                         updatedIndex--;
                     }
@@ -214,7 +242,7 @@ public class AppUsageFetcher {
         try {
             // JSON 파일에 저장할 내용 생성
             JSONObject appData = new JSONObject();
-            appData.put("packageName", extendedInfo.getPackageName());
+            appData.put("package_name", extendedInfo.getPackageName());
             appData.put("category", categoryName);
             appData.put("usageTime", extendedInfo.getUsageTime());
 
@@ -236,61 +264,59 @@ public class AppUsageFetcher {
                 return;
             }
 
-
-            int updatedIndex = -1; // 업데이트된 인덱스 초기화
-
             // 동일한 패키지가 존재하는지 확인 후 사용 시간 업데이트
+            boolean isUpdated = false;
+            int updatedIndex = -1; // 업데이트된 인덱스 초기화
+            // 동일한 패키지가 존재하는지 확인 후 존재하면 메소드 종료
             for (int i = 0; i < appListAll.length(); i++) {
                 JSONObject existingAppData = appListAll.getJSONObject(i);
-                String existingPackageName = existingAppData.getString("packageName");
+                String existingPackageName = existingAppData.getString("package_name");
 
-                // 패키지가 동일하다면 usageTime 합산후 메소드 종료
-                if (existingPackageName.equals(appData.getString("packageName"))) {
+                // 패키지가 동일하다면 usageTime 합산
+                if (existingPackageName.equals(appData.getString("package_name"))) {
                     long existingUsageTime = existingAppData.getLong("usageTime");
                     long newUsageTime = existingUsageTime + appData.getLong("usageTime");
-
                     existingAppData.put("usageTime", newUsageTime); // 사용 시간 업데이트
-
-                    updatedIndex = i;
-                    Log.d(TAG, "동일한 패키지("+ existingPackageName +")존재 All_app.json에서 사용시간 업데이트: "
+                    isUpdated = true;
+                    updatedIndex = i; // 업데이트된 인덱스 저장
+                    Log.d(TAG, "All_app.JSON 파일 저장중 동일한 패키지("+ existingPackageName +")존재, 사용 시간 업데이트: "
                             + existingUsageTime + " + " + appData.getLong("usageTime") + " = " + newUsageTime);
                     break;
                 }
             }
 
             // 피싱 오류 발생 여부 확인 후 추가
-            if (appListAll != null && !appData.getString("packageName").isEmpty()) {
-                // SYSTEM때문에 무조건 새로운 앱이더라도 새로운 위치를 찾아야 함.
-                if(updatedIndex == -1) {
-                    appListAll.put(appData);
-                    updatedIndex = appListAll.length()-1;
-                    Log.d(TAG, "All_app.json에 새로운 앱을 추가합니다. : " + extendedInfo.getPackageName());
-                }
+            if (appListAll != null && !appData.getString("package_name").isEmpty()) {
+// 업데이트된 경우, 적절한 위치에 재배치
+                if (isUpdated) {
+                    JSONObject updatedAppData = appListAll.getJSONObject(updatedIndex);
 
-                //앱의 추가한 위치의 포인터를 받아옴
-                JSONObject updatedAppData = appListAll.getJSONObject(updatedIndex);
-
-                // 적절한 위치 찾기
-                while (updatedIndex > 0) {
-                    JSONObject existingAppData = appListAll.getJSONObject(updatedIndex - 1);
-                    long existingUsageTime = existingAppData.getLong("usageTime");
+                    // 새로운 위치 찾기
+                    while (updatedIndex > 0) {
+                        JSONObject existingAppData = appListAll.getJSONObject(updatedIndex-1); // 기존 파일에 대한 포인터 개념
+                        long existingUsageTime = existingAppData.getLong("usageTime");
 
 
-                    if (updatedAppData.getLong("usageTime") < existingUsageTime) {
-                        Log.d(TAG, "All_app.json - 올바른 위치//" + "(업데이트 or NewApp) 사용 시간 : " + updatedAppData.getLong("usageTime") + " // 위의 앱 시간 : " + existingUsageTime);
-                        break;
-                    } else {// 업데이트된 앱의 사용 시간이 이전의 앱보다 더 많다면 한칸 위로 올라간다.
-                        appListAll.put(updatedIndex, existingAppData);
-                        appListAll.put(updatedIndex - 1, appData);
-                        Log.d(TAG, "All_app.json에 - (업데이트 or NewApp)사용 시간에 따른  중요도 상승("+updatedIndex+") : " + updatedAppData.getString("packageName") + "++ //" + existingAppData.getString("packageName") + "--" );
+                        if (updatedAppData.getLong("usageTime") < existingUsageTime) {
+                            break;
+                        }
+                        else{// 업데이트된 앱의 사용 시간이 이전의 앱보다 더 많다면 한칸 위로 올라간다.
+                            appListAll.put(updatedIndex, existingAppData);
+                            appListAll.put(updatedIndex-1, appData);
+                            Log.d(TAG, "All_app.JSON 사용 시간 업데이트 후 중요도가 올라감. : " + updatedAppData.getString("package_name"));
+                        }
+                        updatedIndex--;
                     }
-                    updatedIndex--;
+
+                    // 현재 데이터에는 appData의 시간이 있으므로 최신 사용 시간으로 업데이트.
+                    appListAll.put(updatedIndex, updatedAppData);
+                } else {
+                    // 새로운 패키지인 경우
+                    appListAll.put(appData); // 앱 데이터를 배열에 추가
+                    Log.d("AppUsageFetcher", "All_app.JSON애 새로운 앱 추가 : " + extendedInfo.getPackageName());
                 }
 
-                // 현재 데이터에는 appData의 시간이 있으므로 최신 사용 시간으로 업데이트.
-                appListAll.put(updatedIndex, updatedAppData);
-
-                // 배열을 파일에 저장
+                // json 파일에 저장
                 FileWriter writer = new FileWriter(fileAll);
                 writer.write(appListAll.toString(2));
                 writer.flush();
@@ -306,14 +332,14 @@ public class AppUsageFetcher {
     }
 
 
-    private void fetchCategoryForApp(String packageName, Context context, long usageTime) {
+    private void fetchCategoryForApp(String packageName, Context context, long usageTime, List<ExtendedApplicationInfo> appList) {
         StaticMethodClass.getCategoryFromPlayStore(packageName, new CategoryCallback() {
             @Override
             public void onCategoryFetched(String category) {
                 Log.d(TAG, "패키지 이름: " + packageName + "\n가져온 카테고리: " + category +  "\n사용 시간: " + usageTime);
                 // ExtendedApplicationInfo 객체 생성 및 초기화
                 ExtendedApplicationInfo extendedInfo = new ExtendedApplicationInfo(packageName, category, usageTime);
-
+                appList.add(extendedInfo); // List에 추가
                 // 파일에 앱 정보를 저장
                 saveAppToFileCategory(context, extendedInfo);
                 saveAppToFileAll(context, extendedInfo);

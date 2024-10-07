@@ -18,9 +18,9 @@ public class SendServer {
     private final OkHttpClient client;
     private final TokenManager tokenManager;
 
-    private final String TAG = "SendServer";
+    private static final String TAG = "SendServer";
 
-    public SendServer(CategoryCallback context) {
+    public SendServer(Context context) {
         this.client = new OkHttpClient();
         this.tokenManager = new TokenManager((Context) context);
     }
@@ -45,6 +45,8 @@ public class SendServer {
             return;
         }
         Log.d(TAG, "accessToken : " + accessToken);
+        // !추가: 보내는 JSON 내용을 로그에 출력
+        Log.d(TAG, "보내는 app_data.json 내용 : " + mainJsonObject.toString());
 
         MediaType JSON = MediaType.parse("application/json; charset=utf-8");
         RequestBody body = RequestBody.create(mainJsonObject.toString(), JSON); // JSONObject를 문자열로 변환
@@ -129,6 +131,69 @@ public class SendServer {
 
                             // 새로운 액세스 토큰으로 서버에 JSON 배열 재전송
                             sendJsonArrayToServer(mainJsonObject, callback); // JSONObject 전달
+                        } else {
+                            Log.e(TAG, "서버 응답에 토큰 값이 없습니다.");
+                            callback.onFailure(call, new IOException("서버 응답에 토큰 값이 없습니다."));
+                        }
+                    } else {
+                        String responseBody = response.body() != null ? response.body().string() : "응답 바디 없음";
+                        String responseHeaders = response.headers().toString();
+
+                        Log.e(TAG, "리프레시 토큰 재발급 실패. 서버 응답 코드: " + response.code());
+                        Log.e(TAG, "응답 바디: " + responseBody);
+                        Log.e(TAG, "응답 헤더: " + responseHeaders);
+
+                        callback.onFailure(call, new IOException("리프레시 토큰 재발급 실패. 서버 응답 코드: " + response.code() + ", 바디: " + responseBody));
+                    }
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "리프레시 토큰 재발급 중 오류 발생: " + e.getMessage());
+            callback.onFailure(null, (IOException) e);
+        }
+    }
+
+    public void loginCheck(String refreshToken, Callback callback) { // JSONArray -> JSONObject 변경
+        try {
+            OkHttpClient client = new OkHttpClient();
+
+            if (refreshToken == null) {
+                Log.e(TAG, "리프레시 토큰이 null입니다.");
+                return;
+            }
+
+            JSONObject emptyJsonObject = new JSONObject(); // 빈 JSON 객체 생성
+            RequestBody body = RequestBody.create(
+                    emptyJsonObject.toString(),
+                    MediaType.parse("application/json; charset=utf-8")
+            );
+
+            Request request = new Request.Builder()
+                    .url(REISSUE_URL)
+                    .addHeader("Cookie", "refresh=" + refreshToken)
+                    .post(body)
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    Log.e(TAG, "리프레시 토큰 요청 실패: " + e.getMessage());
+                    callback.onFailure(call, e);
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    if (response.isSuccessful()) {
+                        String accessToken = response.header("access");
+                        String setCookieHeader = response.header("Set-Cookie");
+                        String refreshTokenFromCookie = extractRefreshToken(setCookieHeader);
+
+                        if (accessToken != null && refreshTokenFromCookie != null) {
+                            tokenManager.saveTokens(accessToken, refreshTokenFromCookie);
+                            Log.d(TAG, "토큰이 성공적으로 초기화 됨 ");
+                            Log.d(TAG, "액세스 토큰: " + accessToken);
+                            Log.d(TAG, "리프레시 토큰: " + refreshTokenFromCookie);
+                            callback.onResponse(call, response);
                         } else {
                             Log.e(TAG, "서버 응답에 토큰 값이 없습니다.");
                             callback.onFailure(call, new IOException("서버 응답에 토큰 값이 없습니다."));

@@ -14,26 +14,6 @@ public class TokenManager {
         this.sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
     }
 
-//    public void saveTokens(Headers headers, List<Cookie> cookies) {
-//        SharedPreferences.Editor editor = sharedPreferences.edit();
-//
-//        // Save Access Token from header
-//        String accessToken = headers.get("access");
-//        if (accessToken != null) {
-//            editor.putString(ACCESS_TOKEN_KEY, accessToken);
-//        }
-//
-//        // Save Refresh Token from cookie
-//        for (Cookie cookie : cookies) {
-//            if ("refresh".equals(cookie.name())) {
-//                editor.putString(REFRESH_TOKEN_KEY, cookie.value());
-//                break;
-//            }
-//        }
-//
-//        editor.apply();
-//    }
-
     // 액세스 토큰과 리프레시 토큰을 저장하는 메서드
     public void saveTokens(String accessToken, String refreshToken) {
         SharedPreferences.Editor editor = sharedPreferences.edit();

@@ -17,7 +17,9 @@ import android.os.Bundle;
 import android.os.Process;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.View;
 import android.view.accessibility.AccessibilityManager;
+import android.widget.ImageButton;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
@@ -30,17 +32,27 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.ai_customizing.adepter.AppInfoAdapter;
+import com.example.ai_customizing.callbacks.CategoryCallback;
 import com.example.ai_customizing.data.AppUsageFetcher;
 import com.example.ai_customizing.model.AppInfo;
+import com.example.ai_customizing.network.SendServer;
 import com.example.ai_customizing.network.ServerMainActivity;
+import com.example.ai_customizing.network.TokenManager;
 import com.example.ai_customizing.service.MyAccessibilityService;
 import com.example.ai_customizing.service.NewAppInstallReceiver;
 import com.example.ai_customizing.utils.Utils;
 
+import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import okhttp3.Call;
+import okhttp3.Response;
+import okhttp3.*;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -99,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
 
         //이곳에서는 권환을 요청합니다.
 
-//접근성을 요청합니다. -> 요청하지 않으면 실시간 앱 패턴 분석 불가.
+        //접근성을 요청합니다. -> 요청하지 않으면 실시간 앱 패턴 분석 불가.
         if (!isAccessibilityServiceEnabled(MyAccessibilityService.class)) {
             // 접근성 권한이 활성화되지 않았을 때 사용자에게 권한 설정을 유도
             new AlertDialog.Builder(this)
@@ -121,15 +133,18 @@ public class MainActivity extends AppCompatActivity {
         //내부 저장된 마지막 업데이트 시간을 받아오기 위한 선언
         sharedPreferences = this.getSharedPreferences("AppUsagePrefs", Context.MODE_PRIVATE);
 
-
-        //기존 메인 화면 작업 (수정 꼭 필요)
-        try {
-            ExistinMainScreenTasks();
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
-        } catch (PackageManager.NameNotFoundException e) {
-            throw new RuntimeException(e);
-        }
+        //로그인 화면 전환
+        // 버튼 클릭 리스너 설정
+        ImageButton LoginButton = findViewById(R.id.UsageLoge);
+        LoginButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // 로그인 화면으로 이동하는 Intent 생성
+                Intent intent = new Intent(MainActivity.this, ServerMainActivity.class);
+                startActivity(intent);
+                finish(); // 메인 액티비티를 종료하여 뒤로가기 시 메인 화면으로 돌아가지 않게 함
+            }
+        });
 
 
     }
@@ -152,27 +167,47 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    //앱을 실행시킬 때마다 작동
     @Override
     protected void onResume() {
         super.onResume();
-        int clickCount1 = MyAccessibilityService.getClickCount(this, appInfoList2.get(0).getPackageName());
-        int clickCount2 = MyAccessibilityService.getClickCount(this, appInfoList2.get(1).getPackageName());
-        int clickCount3 = MyAccessibilityService.getClickCount(this, appInfoList2.get(2).getPackageName());
-        int clickCount4 = MyAccessibilityService.getClickCount(this, appInfoList2.get(3).getPackageName());
 
-        // 클릭 횟수 초기화
-        adapter2.updateTextAtPosition(0, String.valueOf(clickCount1)+"회");
-        adapter2.updateTextAtPosition(1, String.valueOf(clickCount2)+"회");
-        adapter2.updateTextAtPosition(2, String.valueOf(clickCount3)+"회");
-        adapter2.updateTextAtPosition(3, String.valueOf(clickCount4)+"회");
+        if(Utils.readFileAll(this, "All_app.json") != null) {
+            try {
+                ExistinMainScreenTasks();
+            } catch (JSONException | PackageManager.NameNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        else {
+            Log.d(TAG, "ExistinMainScreenTasks : All_app.json이 없기 때문에 실행하지 않음");
+        }
+
+        if (appInfoList2 != null && appInfoList2.size() >= 4) {
+            int clickCount1 = MyAccessibilityService.getClickCount(this, appInfoList2.get(0).getPackageName());
+            int clickCount2 = MyAccessibilityService.getClickCount(this, appInfoList2.get(1).getPackageName());
+            int clickCount3 = MyAccessibilityService.getClickCount(this, appInfoList2.get(2).getPackageName());
+            int clickCount4 = MyAccessibilityService.getClickCount(this, appInfoList2.get(3).getPackageName());
+
+            // 클릭 횟수 초기화
+            adapter2.updateTextAtPosition(0, String.valueOf(clickCount1) + "회");
+            adapter2.updateTextAtPosition(1, String.valueOf(clickCount2) + "회");
+            adapter2.updateTextAtPosition(2, String.valueOf(clickCount3) + "회");
+            adapter2.updateTextAtPosition(3, String.valueOf(clickCount4) + "회");
+        } else {
+            Log.d(TAG, "appInfoList2에 4개의 항목이 없음");
+        }
 
 
-        //모든 사용 시록 정리 함수\
+        //모든 사용 시록 정리 함수
         long lastUpdateTime = sharedPreferences.getLong("lastUpdateTime", 0);
         long currentTime = System.currentTimeMillis();
         if(currentTime - lastUpdateTime >= 24 * 60 * 60 * 1000 || lastUpdateTime == 0){ //최종 업데이트로부터 24시간이 지나야 질문함 혹은 처음 실행했을 때.
             showUsageDialog();
         }
+
+        //로그인 상태 확인
+        LoginCheck();
     }
 
 
@@ -304,5 +339,32 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    public void LoginCheck() {
+        SendServer sendServer = new SendServer(this);
+        TokenManager tokenManager = new TokenManager(this);
 
+        String refreshToken = tokenManager.getRefreshToken();
+        sendServer.loginCheck(refreshToken, new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                // 실패 시 처리 로직
+                Log.e(TAG, "로그인 상태 아님, 로그인 화면으로 전환");
+                Intent intent = new Intent(MainActivity.this, ServerMainActivity.class);
+                startActivity(intent);
+                finish(); // 메인 액티비티를 종료하여 뒤로가기 시 메인 화면으로 돌아가지 않게 함
+            }
+            @Override
+            public void onResponse(Call call, Response response) {
+                if (response.isSuccessful()) {
+                    Log.d(TAG, "로그인 상태 확인 결과 정상");
+                } else {
+                    // 실패 시 처리 로직
+                    Intent intent = new Intent(MainActivity.this, ServerMainActivity.class);
+                    startActivity(intent);
+                    finish(); // 메인 액티비티를 종료하여 뒤로가기 시 메인 화면으로 돌아가지 않게 함
+                    Log.e(TAG, "서버 오류 응답: " + response.code());
+                }
+            }
+        });
+    }
 }

@@ -112,10 +112,18 @@ public class ServerMainActivity extends AppCompatActivity {
 
                             // JSON 데이터 출력
                             System.out.println("전송된 JSON: " + jsonObject.toString());
-                            Toast.makeText(ServerMainActivity.this, "로그인 성공!", Toast.LENGTH_SHORT).show();
-
                             System.out.println("accessToken: " + accessToken + "refreshToken: " + refreshToken);
                             Toast.makeText(ServerMainActivity.this, "로그인 성공!", Toast.LENGTH_SHORT).show();
+
+                            // 로그인 상태를 true로 설정
+                            SharedPreferences preferences = getSharedPreferences("LoginPrefs", MODE_PRIVATE);
+                            SharedPreferences.Editor editor = preferences.edit();
+                            editor.putBoolean("isLoggedIn", true);
+                            editor.apply(); // 변경 사항 저장
+
+                            // MainActivity로 이동하는 Intent 생성
+                            Intent intent = new Intent(ServerMainActivity.this, MainActivity.class);
+                            startActivity(intent);
                         }
                     }
 

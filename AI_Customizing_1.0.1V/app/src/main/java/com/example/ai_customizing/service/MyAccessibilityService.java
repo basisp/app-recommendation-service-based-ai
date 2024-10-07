@@ -21,6 +21,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,7 +50,7 @@ public class MyAccessibilityService extends AccessibilityService implements Cate
         // 위젯 전체 업데이트 호출
         for (int appWidgetId : appWidgetIds) {
             // updateAppWidget 직접 호출
-            Customizing_widget.updateAppWidget(this, appWidgetManager, appWidgetId);
+            Customizing_widget.updateAppWidgetClick(this, appWidgetManager, appWidgetId);
         }
     }
 
@@ -77,7 +78,7 @@ public class MyAccessibilityService extends AccessibilityService implements Cate
                         JSONArray jsonArray = Utils.readFileAll(this, "All_app.json");
                         for (int i = 0; i < jsonArray.length(); i++) {
                             JSONObject existingAppData = jsonArray.getJSONObject(i);
-                            String existingPackageName = existingAppData.getString("packageName");
+                            String existingPackageName = existingAppData.getString("package_name");
 
                             // 패키지가 동일한것을 찾는 과정
                             if (existingPackageName.equals(packageName)) {
@@ -136,6 +137,20 @@ public class MyAccessibilityService extends AccessibilityService implements Cate
     @Override
     public void onInterrupt() {
         // 서비스가 중단될 때 처리할 로직 (필요 시 구현)
+        // 파일 경로 정의 (어플리케이션의 파일 디렉토리 안에 위치한다고 가정)
+        File file = new File(getApplicationContext().getFilesDir(), "app_data.json");
+
+        // 파일이 존재하는지 확인하고 삭제
+        if (file.exists()) {
+            boolean deleted = file.delete();
+            if (deleted) {
+                Log.d("MyAccessibilityService", "app_data.json 파일이 성공적으로 삭제되었습니다.");
+            } else {
+                Log.e("MyAccessibilityService", "app_data.json 파일 삭제에 실패했습니다.");
+            }
+        } else {
+            Log.d("MyAccessibilityService", "app_data.json 파일이 존재하지 않습니다.");
+        }
     }
 
     // 앱 실행 횟수를 저장하는 메서드
@@ -235,7 +250,7 @@ public class MyAccessibilityService extends AccessibilityService implements Cate
             @Override
             public void onFailure(Call call, IOException e) {
                 // 실패 시 처리 로직
-                Log.e(TAG, "서버 전송 실패: " + e.getMessage());
+                Log.e(TAG, "서버 송신/수신 실패: " + e.getMessage());
             }
 
             @Override
@@ -246,6 +261,9 @@ public class MyAccessibilityService extends AccessibilityService implements Cate
                         JSONObject jsonResponse = new JSONObject(responseBody);  // !수정: 서버 응답을 JSONObject로 처리
                         JSONArray appArray = jsonResponse.getJSONArray("apps");  // !수정: "apps" 배열을 추출
 
+                        // !추가: JSONArray 데이터를 문자열로 출력
+                        Log.d(TAG, "전체 JSONArray 데이터: " + appArray.toString());
+
                         // 패키지 이름과 카테고리 추출 및 저장
                         for (int i = 0; i < appArray.length(); i++) {
                             JSONObject appInfo = appArray.getJSONObject(i);
@@ -255,7 +273,7 @@ public class MyAccessibilityService extends AccessibilityService implements Cate
                             // 패키지 이름과 카테고리를 SharedPreferences에 저장
                             SharedPreferences preferences = getSharedPreferences("AppData", MODE_PRIVATE);
                             SharedPreferences.Editor editor = preferences.edit();
-                            editor.putString("packageName" + i, packageName);
+                            editor.putString("package_name" + i, packageName);
                             editor.putString("category" + i, category);
                             editor.apply();
                         }
