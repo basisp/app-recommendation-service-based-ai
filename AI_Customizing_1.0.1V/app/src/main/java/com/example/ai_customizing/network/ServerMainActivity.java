@@ -107,8 +107,12 @@ public class ServerMainActivity extends AppCompatActivity {
                             // 3. TokenManager를 이용해 토큰을 저장
                             if (accessToken != null && refreshToken != null) {
                                 TokenManager tokenManager = new TokenManager(ServerMainActivity.this);
+                                Member member = new Member(ServerMainActivity.this);
                                 tokenManager.saveTokens(accessToken, refreshToken);  // 액세스 토큰과 리프레시 토큰 저장
+                                member.saveUsername(username); // 유저 이름을 저장
                             }
+
+                            // 4. ToKenManager 이용해 사용자 이름 저장.
 
                             // JSON 데이터 출력
                             System.out.println("전송된 JSON: " + jsonObject.toString());
