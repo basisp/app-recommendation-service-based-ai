@@ -1,5 +1,6 @@
 package com.example.ai_customizing.adepter;
 
+import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -58,7 +59,14 @@ public class AppInfoAdapter extends RecyclerView.Adapter<AppInfoAdapter.ViewHold
 
     public void updateTextAtPosition(int position, String newText) {
         if (position >= 0 && position < appInfoList.size()) {
-            appInfoList.get(position).setInfo(newText); // 예를 들어 usageTime을 업데이트
+            appInfoList.get(position).setUsageInfo(newText); // 예를 들어 usageTime을 업데이트
+            notifyItemChanged(position); // RecyclerView에 변경 알림
+        }
+    }
+
+    public void updateAllPosition(int position, Drawable icon, String label, String usage, String packageName) {
+        if (position >= 0 && position < appInfoList.size()) {
+            appInfoList.get(position).setAllInfo(icon, label, usage, packageName); // 예를 들어 usageTime을 업데이트
             notifyItemChanged(position); // RecyclerView에 변경 알림
         }
     }

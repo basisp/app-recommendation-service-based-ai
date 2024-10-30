@@ -1,16 +1,24 @@
 package com.example.ai_customizing.network;
 
 import android.annotation.SuppressLint;
+import android.app.AppOpsManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 
+import com.example.ai_customizing.AppUsageFetchWorker;
 import com.example.ai_customizing.MainActivity;
 import com.example.ai_customizing.R;
 import com.example.ai_customizing.model.Member;
@@ -34,12 +42,19 @@ import java.util.List;
 public class ServerMainActivity extends AppCompatActivity {
     private EditText UserEditText, passEditText;
     private Button registerButton, loginButton, mainButton;
+    private static final int USAGE_ACCESS_PERMISSION_REQUEST_CODE = 1;
 
     @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.server_main_activity);
+
+        // 사용자 기록 엑세스 권한 요청 로직 실행
+        if (!isUsageAccessGranted()) {
+            requestUsageAccessPermission(); // 권한 요청
+        }
+
 
         UserEditText = findViewById(R.id.UserEditText);
         passEditText = findViewById(R.id.passEditText);
@@ -107,8 +122,8 @@ public class ServerMainActivity extends AppCompatActivity {
                             // 3. TokenManager를 이용해 토큰을 저장
                             if (accessToken != null && refreshToken != null) {
                                 TokenManager tokenManager = new TokenManager(ServerMainActivity.this);
-                                Member member = new Member(ServerMainActivity.this);
                                 tokenManager.saveTokens(accessToken, refreshToken);  // 액세스 토큰과 리프레시 토큰 저장
+                                Member member = new Member(ServerMainActivity.this);
                                 member.saveUsername(username); // 유저 이름을 저장
                             }
 
@@ -124,6 +139,9 @@ public class ServerMainActivity extends AppCompatActivity {
                             SharedPreferences.Editor editor = preferences.edit();
                             editor.putBoolean("isLoggedIn", true);
                             editor.apply(); // 변경 사항 저장
+
+                            //사용자 파일 정리
+                            startBackgroundAppUsageFetcher();
 
                             // MainActivity로 이동하는 Intent 생성
                             Intent intent = new Intent(ServerMainActivity.this, MainActivity.class);
@@ -177,18 +195,46 @@ public class ServerMainActivity extends AppCompatActivity {
     }
 
 
-    private List<Cookie> extractCookies(Response response) {
-        List<Cookie> cookies = new ArrayList<>();
-        List<String> cookieHeaders = response.headers("Set-Cookie"); // Set-Cookie 헤더를 가져옴
-        HttpUrl url = response.request().url(); // 요청의 URL을 가져옴
+    private void requestUsageAccessPermission() {
+        // !수정: 사용자 기록 엑세스 권한을 요청하는 메서드
+        Intent intent = new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS);
+        startActivityForResult(intent, USAGE_ACCESS_PERMISSION_REQUEST_CODE);
+    }
 
-        for (String cookieHeader : cookieHeaders) {
-            // 쿠키 파싱
-            Cookie cookie = Cookie.parse(url, cookieHeader);
-            if (cookie != null) {
-                cookies.add(cookie);
+    private boolean isUsageAccessGranted() {
+        // !수정: 사용 기록 접근 권한이 허용되었는지 확인하는 메서드
+        AppOpsManager appOps = (AppOpsManager) getSystemService(Context.APP_OPS_SERVICE);
+        int mode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(), getPackageName());
+        return mode == AppOpsManager.MODE_ALLOWED;
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        // 권한이 부여되지 않았을 때 처리
+        if (requestCode == USAGE_ACCESS_PERMISSION_REQUEST_CODE) {
+            if (isUsageAccessGranted()) {
+                // 권한이 승인되었으면 권한 승인 완료 로그 출력
+                Toast.makeText(this, "사용자 기록 엑세스 권한이 승인되었습니다.", Toast.LENGTH_SHORT).show();
+            } else {
+                // 권한이 승인되지 않으면 Toast 메시지를 띄우고 다시 권한 요청
+                Toast.makeText(this, "사용자 기록 엑세스 권한이 필요합니다.", Toast.LENGTH_SHORT).show();
+                requestUsageAccessPermission(); // 다시 권한 요청
             }
         }
-        return cookies;
+    }
+
+
+    private void startBackgroundAppUsageFetcher() {
+        WorkManager workManager = WorkManager.getInstance(this);
+
+        // WorkRequest 생성
+        OneTimeWorkRequest fetchAppUsageWork = new OneTimeWorkRequest.Builder(AppUsageFetchWorker.class)
+                .build();
+
+        // WorkManager 실행
+        workManager.enqueue(fetchAppUsageWork);
     }
 }

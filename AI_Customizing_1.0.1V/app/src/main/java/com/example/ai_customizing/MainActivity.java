@@ -25,6 +25,7 @@ import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -34,6 +35,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.ai_customizing.adepter.AppInfoAdapter;
 import com.example.ai_customizing.callbacks.CategoryCallback;
 import com.example.ai_customizing.data.AppUsageFetcher;
+import com.example.ai_customizing.data.OnAppDataFetchedListener;
 import com.example.ai_customizing.model.AppInfo;
 import com.example.ai_customizing.network.SendServer;
 import com.example.ai_customizing.network.ServerMainActivity;
@@ -146,7 +148,39 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // 리사이클 뷰 세로 정렬
+        RecyclerView recyclerView1 = findViewById(R.id.recyclerView_usage_time);
+        recyclerView1.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+        RecyclerView recyclerView2 = findViewById(R.id.recyclerView_click_count);
+        recyclerView2.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
 
+
+        // 메인 화면 초기화
+        Drawable InitializeDrawable = ContextCompat.getDrawable(getApplicationContext(), R.drawable.baseline_image_search_24);
+        appInfoList1.add(new AppInfo(InitializeDrawable, "앱 정리중", "00:00", "Null"));
+        appInfoList1.add(new AppInfo(InitializeDrawable, "앱 정리중", "00:00", "Null"));
+        appInfoList1.add(new AppInfo(InitializeDrawable, "앱 정리중", "00:00", "Null"));
+        appInfoList1.add(new AppInfo(InitializeDrawable, "앱 정리중", "00:00", "Null"));
+
+
+        appInfoList2.add(new AppInfo(InitializeDrawable, "앱 정리중", "0회", "Null"));
+        appInfoList2.add(new AppInfo(InitializeDrawable, "앱 정리중", "0회", "Null"));
+        appInfoList2.add(new AppInfo(InitializeDrawable, "앱 정리중", "0회", "Null"));
+        appInfoList2.add(new AppInfo(InitializeDrawable, "앱 정리중", "0회", "Null"));
+
+        if(Utils.readFileAll(this, "All_app.json") != null) {
+            try {
+                ExistinMainScreenTasks();
+            } catch (JSONException | PackageManager.NameNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        else {
+            Log.d(TAG, "ExistinMainScreenTasks : All_app.json이 없기 때문에 실행하지 않음");
+        }
+
+        recyclerView1.setAdapter(adapter1);
+        recyclerView2.setAdapter(adapter2);
     }
 
     private void requestAccessibilityPermission(MainActivity mainActivity) {
@@ -172,17 +206,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-        if(Utils.readFileAll(this, "All_app.json") != null) {
-            try {
-                ExistinMainScreenTasks();
-            } catch (JSONException | PackageManager.NameNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        else {
-            Log.d(TAG, "ExistinMainScreenTasks : All_app.json이 없기 때문에 실행하지 않음");
-        }
-
         if (appInfoList2 != null && appInfoList2.size() >= 4) {
             int clickCount1 = MyAccessibilityService.getClickCount(this, appInfoList2.get(0).getPackageName());
             int clickCount2 = MyAccessibilityService.getClickCount(this, appInfoList2.get(1).getPackageName());
@@ -190,10 +213,10 @@ public class MainActivity extends AppCompatActivity {
             int clickCount4 = MyAccessibilityService.getClickCount(this, appInfoList2.get(3).getPackageName());
 
             // 클릭 횟수 초기화
-            adapter2.updateTextAtPosition(0, String.valueOf(clickCount1) + "회");
-            adapter2.updateTextAtPosition(1, String.valueOf(clickCount2) + "회");
-            adapter2.updateTextAtPosition(2, String.valueOf(clickCount3) + "회");
-            adapter2.updateTextAtPosition(3, String.valueOf(clickCount4) + "회");
+            adapter2.updateTextAtPosition(0, clickCount1 + "회");
+            adapter2.updateTextAtPosition(1, clickCount2 + "회");
+            adapter2.updateTextAtPosition(2, clickCount3 + "회");
+            adapter2.updateTextAtPosition(3, clickCount4 + "회");
         } else {
             Log.d(TAG, "appInfoList2에 4개의 항목이 없음");
         }
@@ -225,12 +248,6 @@ public class MainActivity extends AppCompatActivity {
 
     //메인 화면 설정 메소드
     private void ExistinMainScreenTasks() throws JSONException, PackageManager.NameNotFoundException {
-        // 리사이클 뷰 세로 정렬
-        RecyclerView recyclerView1 = findViewById(R.id.recyclerView_usage_time);
-        recyclerView1.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
-        RecyclerView recyclerView2 = findViewById(R.id.recyclerView_click_count);
-        recyclerView2.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
-
         PackageManager packageManager = this.getPackageManager();
 
 
@@ -272,21 +289,16 @@ public class MainActivity extends AppCompatActivity {
         int clickCount3 = MyAccessibilityService.getClickCount(this, packageName3);
         int clickCount4 = MyAccessibilityService.getClickCount(this, packageName4);
 
-
-        appInfoList1.add(new AppInfo(appIcon1, Label1, AppUsage1, packageName1));
-        appInfoList1.add(new AppInfo(appIcon2, Label2, AppUsage2, packageName2));
-        appInfoList1.add(new AppInfo(appIcon3, Label3, AppUsage3, packageName3));
-        appInfoList1.add(new AppInfo(appIcon4, Label4, AppUsage4, packageName4));
-
-
-        appInfoList2.add(new AppInfo(appIcon1, Label1, String.valueOf(clickCount1)+"회", packageName1));
-        appInfoList2.add(new AppInfo(appIcon2, Label2, String.valueOf(clickCount2)+"회", packageName2));
-        appInfoList2.add(new AppInfo(appIcon3, Label3, String.valueOf(clickCount3)+"회", packageName3));
-        appInfoList2.add(new AppInfo(appIcon4, Label4, String.valueOf(clickCount4)+"회", packageName4));
+        adapter1.updateAllPosition(0, appIcon1, Label1, AppUsage1, packageName1);
+        adapter1.updateAllPosition(1, appIcon2, Label2, AppUsage2, packageName2);
+        adapter1.updateAllPosition(2, appIcon3, Label3, AppUsage3, packageName3);
+        adapter1.updateAllPosition(3, appIcon4, Label4, AppUsage4, packageName4);
 
 
-        recyclerView1.setAdapter(adapter1);
-        recyclerView2.setAdapter(adapter2);
+        adapter2.updateAllPosition(0, appIcon1, Label1, String.valueOf(clickCount1)+"회", packageName1);
+        adapter2.updateAllPosition(1, appIcon2, Label2, String.valueOf(clickCount2)+"회", packageName2);
+        adapter2.updateAllPosition(2, appIcon3, Label3, String.valueOf(clickCount3)+"회", packageName3);
+        adapter2.updateAllPosition(3, appIcon4, Label4, String.valueOf(clickCount4)+"회", packageName4);
     }
 
 
@@ -319,24 +331,32 @@ public class MainActivity extends AppCompatActivity {
 
     //모든 사용 기록 정리 함수
     private void showUsageDialog() {
-        new AlertDialog.Builder(this)
-                .setTitle("사용 기록")
-                .setMessage("앱 사용 기록을 정리하시겠습니까?")
-                .setPositiveButton("확인", (dialog, which) -> {
-                    if (hasUsageStatsPermission()) {
-                        try {
-                            AppUsageFetcher appUsageFetcher = new AppUsageFetcher(this);
-                            appUsageFetcher.fetchAndSaveAppsByCategory(this);
-                        } catch (PackageManager.NameNotFoundException e) {
-                            throw new RuntimeException(e);
+        if (hasUsageStatsPermission()) {
+            try {
+                AppUsageFetcher appUsageFetcher = new AppUsageFetcher(this);
+                appUsageFetcher.fetchAndSaveAppsByCategory(this, new OnAppDataFetchedListener() {
+                    @Override
+                    public void onDataFetched() {
+                        if(Utils.readFileAll(getApplicationContext(), "All_app.json") != null) {
+                            try {
+                                ExistinMainScreenTasks();
+                            } catch (JSONException | PackageManager.NameNotFoundException e) {
+                                throw new RuntimeException(e);
+                            }
                         }
-                    } else {
-                        requestUsageAccessPermission(); // 권한 요청
+                        else {
+                            Log.d(TAG, "ExistinMainScreenTasks : All_app.json이 없기 때문에 실행하지 않음");
+                        }
                     }
-                })
-                .setNegativeButton("취소", null)
-                .show();
+                });
+            } catch (PackageManager.NameNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            requestUsageAccessPermission(); // 권한 요청
+        }
     }
+
 
 
     public void LoginCheck() {

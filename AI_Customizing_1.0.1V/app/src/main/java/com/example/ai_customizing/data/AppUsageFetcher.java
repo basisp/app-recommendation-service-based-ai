@@ -23,21 +23,24 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class AppUsageFetcher {
     private final String TAG = "AppUsageFetcher";
     private final UsageStatsManager usageStatsManager;
     private final PackageManager packageManager;
     private Context context;
-
+    private int totalTasks;
+    AtomicInteger completedTasks;
     public AppUsageFetcher(Context context) {
         usageStatsManager = (UsageStatsManager) context.getSystemService(Context.USAGE_STATS_SERVICE);
         packageManager = context.getPackageManager();
         this.context = context;
     }
 
-    public void fetchAndSaveAppsByCategory(Context context) throws PackageManager.NameNotFoundException {
-        //알람 설정
+    public void fetchAndSaveAppsByCategory(Context context, OnAppDataFetchedListener listener) throws PackageManager.NameNotFoundException {
+        //sharedPreferences 설정
         SharedPreferences sharedPreferences = context.getSharedPreferences("AppUsagePrefs", Context.MODE_PRIVATE);
         long lastUpdateTime = sharedPreferences.getLong("lastUpdateTime", 0);
         long currentTime = System.currentTimeMillis();
@@ -63,6 +66,9 @@ public class AppUsageFetcher {
         }
 
 
+        // 현재 시간을 lastUpdateTime으로 업데이트합니다.
+        sharedPreferences.edit().putLong("lastUpdateTime", currentTime).apply();
+
         if (usageStatsList.isEmpty()) {
             Log.e("AppUsageFetcher", "사용 기록이 없습니다.");
             return;
@@ -74,12 +80,28 @@ public class AppUsageFetcher {
         // 새 데이터를 저장할 List 생성
         List<ExtendedApplicationInfo> appList = new ArrayList<>();
 
+
+
         // 앱 사용 통계와 사용자 설치 앱 목록을 결합
         for (UsageStats usageStats : usageStatsList) {
             String packageName = usageStats.getPackageName();
             try {
                 ApplicationInfo appInfo = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA);
-                if(StaticMethodClass.isExceptionSystemApp(appInfo.packageName)){
+
+                Optional<ExtendedApplicationInfo> matchingApp = appList.stream()
+                        .filter(app -> app.getPackageName().equals(packageName))
+                        .findFirst();
+                if (matchingApp.isPresent()){ //packageName이 이미 존재하는 패키지라면
+                    ExtendedApplicationInfo extendedInfo = matchingApp.get();
+                    extendedInfo.setUsageTime(usageStats.getTotalTimeInForeground());
+                    Log.d(TAG, "이미 extendedInfo안에 존재하는 패키지 // " +
+                            "패키지 이름: " + packageName + "\n저장된 카테고리: " + extendedInfo.getCategoryName() +  "\n사용 시간: " + usageStats.getTotalTimeInForeground());
+
+
+                    saveAppToFileCategory(context, extendedInfo);
+                    saveAppToFileAll(context, extendedInfo);
+                }
+                else if(StaticMethodClass.isExceptionSystemApp(appInfo.packageName)){
                     //특정 패키지의 앱이라면 SYSTEM 카테고리를 붙임
                     ExtendedApplicationInfo extendedInfo = new ExtendedApplicationInfo
                             (packageName, "SYSTEM", usageStats.getTotalTimeInForeground());
@@ -92,33 +114,64 @@ public class AppUsageFetcher {
                     // Google Play 스토어에서 카테고리 정보를 비동기적으로 가져옴
                     fetchCategoryForApp(packageName, context, usageStats.getTotalTimeInForeground(), appList);
                 }
+//                else {
+//                    completedTasks.incrementAndGet();
+//                    Log.d(TAG, "사용 하지 않는 시스탬 앱 // 전체 작업 수 :"  + totalTasks + "진행된 작업 수 : " + completedTasks.get());
+//                }
             } catch (PackageManager.NameNotFoundException e) {
                 Log.e(TAG, "앱 정보를 찾을 수 없습니다: " + packageName, e);
             }
         }
 
+
+
         // 모든 패키지를 가져와 사용하지 않은 앱도 All_app.json 파일에 추가하는 로직
         List<ApplicationInfo> allApps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA);
+
+        // 전체 비동기 작업 추적
+        totalTasks = allApps.size(); // 전체 작업 수
+        completedTasks = new AtomicInteger(0); // 완료된 작업 수 추적
+        Log.d(TAG, "UsageStats 반복문 시작전 확인 // 전체 작업 수 :"  + totalTasks + " 진행된 작업 수 : " + completedTasks.get());
+
+
         for (ApplicationInfo appInfo : allApps) {
             String packageName = appInfo.packageName;
-
-            // 시스템 앱은 제외하되, 예외적인 시스템 앱은 포함
-            if ((appInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0 || StaticMethodClass.isExceptionSystemApp(packageName)) {
+            // 시스템 앱은 제외
+            if ((appInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0) {
                 // List<ExtendedApplicationInfo>에서 해당 패키지가 이미 있는지 확인
                 boolean isAlreadyInList = appList.stream().anyMatch(app -> app.getPackageName().equals(packageName));
-
                 // List에 없는 앱만 처리
                 if (!isAlreadyInList) {
                     // 시스템 앱이 아닌 경우 fetchCategoryForApp 사용
-                    fetchCategoryForApp(packageName, context, 0, appList); // 기본 사용 시간 0
+                    fetchCategoryForApp(packageName, context, 0, appList, new OnAppDataFetchedListener() {
+                        @Override
+                        public void onDataFetched() {
+                            listener.onDataFetched();
+                            //야 여기에 넣어? 좋은데?
+                        }
+                    });
                 }
                 else {
+                    completedTasks.incrementAndGet();
+                    Log.d(TAG, "이미 완료된 작업 // 전체 작업 수 :"  + totalTasks + "진행된 작업 수 : " + completedTasks.get());
                     Log.d(TAG, "appInfo : allApps => 이미 All_app.json에 추가된 앱");
-                }
+               }
+            } else{ // 쓸모없는 시스탬 앱을 경우
+                completedTasks.incrementAndGet();
+                Log.d(TAG, "시스탬 앱 // 전체 작업 수 :"  + totalTasks + "진행된 작업 수 : " + completedTasks.get());
             }
         }
-
     }
+    //24시간의 사용 기록 가져오기 -> 정확히 24시간이 아닌 24시간 이후에 지난 시간을 더해서 사용하는 getUsageStatsBetween()로 대체
+//    private List<UsageStats> getUsageStatsForLast24Hours() {
+//        Calendar calendar = Calendar.getInstance();
+//        long endTime = calendar.getTimeInMillis(); // 현재 시간
+//        calendar.add(Calendar.HOUR_OF_DAY, -24);   // 24시간 전
+//        long startTime = calendar.getTimeInMillis();
+//
+//        return usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime);
+//    }
+
     //한달간의 기록 가져이고
     private List<UsageStats> getUsageStatsForLastMonth() {
         Calendar calendar = Calendar.getInstance();
@@ -198,7 +251,7 @@ public class AppUsageFetcher {
                         long existingUsageTime = existingAppData.getLong("usageTime");
 
 
-                        if (updatedAppData.getLong("usageTime") < existingUsageTime) {
+                        if (updatedAppData.getLong("usageTime") <= existingUsageTime) {
                             break;
                         }
                         else{// 업데이트된 앱의 사용 시간이 이전의 앱보다 더 많다면 한칸 위로 올라간다.
@@ -260,7 +313,7 @@ public class AppUsageFetcher {
                 writer.write(appListAll.toString(2));
                 writer.flush();
                 writer.close();
-                Log.d("AppUsageFetcher", "All_app.JSON 파일이 잘 저장되었음");
+                Log.d("AppUsageFetcher", "All_app.JSON 파일이 잘 저장되었음\n\n");
                 return;
             }
 
@@ -297,7 +350,7 @@ public class AppUsageFetcher {
                         long existingUsageTime = existingAppData.getLong("usageTime");
 
 
-                        if (updatedAppData.getLong("usageTime") < existingUsageTime) {
+                        if (updatedAppData.getLong("usageTime") <= existingUsageTime) {
                             break;
                         }
                         else{// 업데이트된 앱의 사용 시간이 이전의 앱보다 더 많다면 한칸 위로 올라간다.
@@ -332,14 +385,41 @@ public class AppUsageFetcher {
     }
 
 
+    private void fetchCategoryForApp(String packageName, Context context, long usageTime, List<ExtendedApplicationInfo> appList, OnAppDataFetchedListener liste) {
+        StaticMethodClass.getCategoryFromPlayStore(packageName, new CategoryCallback() {
+            @Override
+            public void onCategoryFetched(String category) {
+                Log.d(TAG, "재정의2(콜백 사용) // 패키지 이름: " + packageName + "\n가져온 카테고리: " + category +  "\n사용 시간: " + usageTime);
+
+                // ExtendedApplicationInfo 객체 생성 및 초기화
+                ExtendedApplicationInfo extendedInfo = new ExtendedApplicationInfo(packageName, category, usageTime);
+                appList.add(extendedInfo); // List에 추가
+
+                // 파일에 앱 정보를 저장
+                saveAppToFileCategory(context, extendedInfo);
+                saveAppToFileAll(context, extendedInfo);
+
+                completedTasks.incrementAndGet();
+                Log.d(TAG, "카테고리 요청 // 전체 작업 수 :"  + totalTasks + "진행된 작업 수 : " + completedTasks.get() + "\n\n");
+                if (completedTasks.get() == totalTasks) {
+                    if (liste != null) {
+                        liste.onDataFetched(); // 모든 작업 완료 후 콜백 호출
+                    }
+                }
+            }
+        });
+    }
+
     private void fetchCategoryForApp(String packageName, Context context, long usageTime, List<ExtendedApplicationInfo> appList) {
         StaticMethodClass.getCategoryFromPlayStore(packageName, new CategoryCallback() {
             @Override
             public void onCategoryFetched(String category) {
-                Log.d(TAG, "패키지 이름: " + packageName + "\n가져온 카테고리: " + category +  "\n사용 시간: " + usageTime);
+                Log.d(TAG, "재정의1 패키지 이름: " + packageName + "\n가져온 카테고리: " + category +  "\n사용 시간: " + usageTime);
+
                 // ExtendedApplicationInfo 객체 생성 및 초기화
                 ExtendedApplicationInfo extendedInfo = new ExtendedApplicationInfo(packageName, category, usageTime);
                 appList.add(extendedInfo); // List에 추가
+
                 // 파일에 앱 정보를 저장
                 saveAppToFileCategory(context, extendedInfo);
                 saveAppToFileAll(context, extendedInfo);

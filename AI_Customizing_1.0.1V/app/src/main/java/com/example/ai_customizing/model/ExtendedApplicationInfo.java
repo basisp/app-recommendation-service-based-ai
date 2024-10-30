@@ -143,4 +143,6 @@ public class ExtendedApplicationInfo extends ApplicationInfo {
     public String getPackageName() {
         return packageName;
     }
+
+    public void setUsageTime(long usageTime) { this.usageTime = usageTime; }
 }

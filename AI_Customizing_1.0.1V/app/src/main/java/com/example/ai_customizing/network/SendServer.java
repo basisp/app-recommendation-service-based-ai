@@ -4,7 +4,11 @@ import android.content.Context;
 import android.util.Log;
 
 import com.example.ai_customizing.callbacks.CategoryCallback;
+import com.example.ai_customizing.model.Member;
+import com.example.ai_customizing.utils.Utils;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import java.net.HttpURLConnection;
 
@@ -17,12 +21,13 @@ public class SendServer {
 
     private final OkHttpClient client;
     private final TokenManager tokenManager;
-
+    private Context context;
     private static final String TAG = "SendServer";
 
     public SendServer(Context context) {
         this.client = new OkHttpClient();
         this.tokenManager = new TokenManager((Context) context);
+        this.context = context;
     }
 
     // Set-Cookie 헤더에서 리프레시 토큰을 추출하는 메서드
@@ -81,7 +86,7 @@ public class SendServer {
                     }
                 } else {
                     // 다른 오류 처리
-                    Log.d(TAG, "응답은 받았는데 알 수 없는 오류 CallBack을 통한 오류 코드 전달");
+                    Log.d(TAG, "응답은 받았는데 알 수 없는 오류 CallBack을 통한 오류 코드 전달 // body: " + response.body().string());
                     callback.onFailure(call, new IOException("오류 코드: " + response.code()));
                 }
             }
@@ -213,6 +218,75 @@ public class SendServer {
         } catch (Exception e) {
             Log.e(TAG, "리프레시 토큰 재발급 중 오류 발생: " + e.getMessage());
             callback.onFailure(null, (IOException) e);
+        }
+    }
+
+    // 서버로 All_app.json 파일 전송하는 메소드
+    public void sendAllAppDataToServer() {
+        Member member = new Member(context.getApplicationContext());
+        String username = member.getUsername();
+
+        // All_app.json 파일 읽기
+        String filename = "All_app.json";
+        JSONArray allAppDataArray = Utils.readFileAll(context.getApplicationContext(), filename);
+
+        if (allAppDataArray != null && allAppDataArray.length() > 0) {
+            try {
+                // 서버로 보낼 최종 JSONObject 생성
+                JSONObject finalData = new JSONObject();
+
+                // 첫번째 정보는 username이므로 먼저 추가
+                finalData.put("username", username);
+
+                // apps 배열에 데이터를 넣기 위한 JSONArray
+                JSONArray appsArray = new JSONArray();
+
+                // All_app.json에서 각 앱 데이터를 가져와 apps 배열로 변환
+                for (int i = 0; i < allAppDataArray.length(); i++) {
+                    JSONObject appData = allAppDataArray.getJSONObject(i);
+                    JSONObject appEntry = new JSONObject();
+
+                    // All_app.json의 필드와 서버로 보낼 형식 맞춤
+                    appEntry.put("package_name", appData.getString("package_name"));
+                    appEntry.put("category", appData.getString("category"));
+
+                    // !추가: 최종 appsArray에 각 앱 데이터 추가
+                    appsArray.put(appEntry);
+                }
+
+                // 최종적으로 apps 배열을 finalData에 추가
+                finalData.put("apps", appsArray);
+
+                // OkHttp 요청을 위해 JSONObject를 String으로 변환
+                OkHttpClient client = new OkHttpClient();
+                RequestBody requestBody = RequestBody.create(finalData.toString(), MediaType.parse("application/json"));
+
+                Request request = new Request.Builder()
+                        .url("http://43.202.148.2:8080/save")
+                        .post(requestBody)
+                        .build();
+
+                // 서버로 요청 실행
+                client.newCall(request).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(Call call, IOException e) {
+                        Log.e(TAG, "sendAllAppDataToServer : 데이터 전송 중 오류 발생", e);
+                    }
+
+                    @Override
+                    public void onResponse(Call call, Response response) throws IOException {
+                        if (response.isSuccessful()) {
+                            Log.d(TAG, "sendAllAppDataToServer : 서버로 데이터 전송 성공");
+                        } else {
+                            Log.e(TAG, "sendAllAppDataToServer : 서버로 데이터 전송 실패: " + response.code());
+                        }
+                    }
+                });
+            } catch (JSONException e) {
+                Log.e(TAG, "sendAllAppDataToServer : JSON 처리 중 오류 발생", e);
+            }
+        } else {
+            Log.e(TAG, "All_app.json 파일을 찾을 수 없거나 데이터가 없습니다.");
         }
     }
 }

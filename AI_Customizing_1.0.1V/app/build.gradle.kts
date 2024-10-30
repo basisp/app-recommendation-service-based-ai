@@ -36,6 +36,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.work:work-runtime-ktx:2.8.0") // worker 추가
     implementation("org.jsoup:jsoup:1.18.1") //jsop 추가
     implementation("com.squareup.retrofit2:retrofit:2.9.0") // retrofit2
     implementation("com.squareup.retrofit2:converter-gson:2.9.0") // Gson 변환기
@@ -46,6 +47,8 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.navigation.runtime)
     implementation(libs.navigation.ui)
+    implementation(libs.runner)
+    implementation(libs.work.runtime)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

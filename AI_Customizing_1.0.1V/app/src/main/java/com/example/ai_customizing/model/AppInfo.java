@@ -3,10 +3,10 @@ package com.example.ai_customizing.model;
 import android.graphics.drawable.Drawable;
 
 public class AppInfo {
-    private final Drawable iconResId;
-    private final String name;
+    private Drawable iconResId;
+    private String name;
     private String info;
-    private final String packageName;
+    private String packageName;
 
     public AppInfo(Drawable iconResId, String name, String info, String packageName) {
         this.iconResId = iconResId;
@@ -29,7 +29,14 @@ public class AppInfo {
 
     public String getPackageName() { return packageName; }
 
-    public void setInfo(String info) {
+    public void setUsageInfo(String info) {
         this.info = info;
+    }
+
+    public void setAllInfo(Drawable iconResId, String name, String info, String packageName) {
+        this.iconResId =iconResId;
+        this.name = name;
+        this.info = info;
+        this.packageName = packageName;
     }
 }

@@ -11,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 
+import com.example.ai_customizing.model.Member;
 import com.example.ai_customizing.network.SendServer;
 import com.example.ai_customizing.utils.StaticMethodClass;
 import com.example.ai_customizing.utils.Utils;
@@ -186,19 +187,30 @@ public class MyAccessibilityService extends AccessibilityService implements Cate
 
     private void SaveJsonFile() throws JSONException {
         // 다운로드 폴더에서 JSON 파일을 읽어옴
-        JSONObject mainJsonObject= Utils.readFileApp_data(this, "app_data.json");
+        JSONObject mainJsonObject = Utils.readFileApp_data(this, "app_data.json");
 
         JSONArray jsonArray;
+
 
         if (mainJsonObject == null || !mainJsonObject.has("apps")) {
             // 파일이 없거나 "apps" 배열이 없으면 새로 생성
             mainJsonObject = new JSONObject();
             jsonArray = new JSONArray();
-            Log.d(TAG, "app_data.json를 새로 생성합니다.");
+            Log.d(TAG, "app_data.json을 새로 생성합니다.");
+
+            // username 필드를 mainJsonObject에 추가
+            Member member = new Member(this);
+            mainJsonObject.put("username", member.getUsername());
         } else {
             // JSON 파일에서 "apps" 배열을 가져옴
             jsonArray = mainJsonObject.getJSONArray("apps");
             Log.d(TAG, "app_data.json에 새로운 데이터를 추가합니다.");
+
+            // username이 없을 경우 기본 값을 설정
+            if (!mainJsonObject.has("username")) {
+                Member member = new Member(this);
+                mainJsonObject.put("username", member.getUsername());
+            }
         }
 
         try {
@@ -232,7 +244,7 @@ public class MyAccessibilityService extends AccessibilityService implements Cate
         saveJsonToFileORSERVER(mainJsonObject);
     }
 
-    private void saveJsonToFileORSERVER(JSONObject mainJsonObject) { // JSONArray -> JSONObject로 수정
+    private void saveJsonToFileORSERVER(JSONObject mainJsonObject) throws JSONException { // JSONArray -> JSONObject로 수정
         String fileName = "app_data.json";
 
         // 내부 저장소에 JSON 파일 저장
@@ -244,8 +256,10 @@ public class MyAccessibilityService extends AccessibilityService implements Cate
             Log.d(TAG, "JSON 파일 저장 실패: " + fileName);
         }
 
-        SendServer sendServer = new SendServer(this);
 
+
+
+        SendServer sendServer = new SendServer(this);
         sendServer.sendJsonArrayToServer(mainJsonObject, new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
