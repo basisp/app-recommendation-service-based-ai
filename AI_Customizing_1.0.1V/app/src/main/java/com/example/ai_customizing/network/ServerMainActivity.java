@@ -60,7 +60,7 @@ public class ServerMainActivity extends AppCompatActivity {
         passEditText = findViewById(R.id.passEditText);
         registerButton = findViewById(R.id.registerButton);
         loginButton = findViewById(R.id.Loginbutton);
-        mainButton = findViewById(R.id.MainButton);
+//        mainButton = findViewById(R.id.MainButton);
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("http://43.202.148.2:8080/")
@@ -127,7 +127,9 @@ public class ServerMainActivity extends AppCompatActivity {
                                 member.saveUsername(username); // 유저 이름을 저장
                             }
 
-                            // 4. ToKenManager 이용해 사용자 이름 저장.
+                            // 4. member 이용해 사용자 이름 저장.
+                            Member member = new Member(ServerMainActivity.this);
+                            member.saveUsername(username);
 
                             // JSON 데이터 출력
                             System.out.println("전송된 JSON: " + jsonObject.toString());
@@ -141,11 +143,12 @@ public class ServerMainActivity extends AppCompatActivity {
                             editor.apply(); // 변경 사항 저장
 
                             //사용자 파일 정리
-                            startBackgroundAppUsageFetcher();
+                            //startBackgroundAppUsageFetcher();
 
                             // MainActivity로 이동하는 Intent 생성
                             Intent intent = new Intent(ServerMainActivity.this, MainActivity.class);
                             startActivity(intent);
+                            finish();
                         }
                     }
 
@@ -169,21 +172,21 @@ public class ServerMainActivity extends AppCompatActivity {
         });
 
 
-        // 버튼 클릭 리스너 설정
-        mainButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                 // 로그인 상태를 true로 설정
-                SharedPreferences preferences = getSharedPreferences("LoginPrefs", MODE_PRIVATE);
-                SharedPreferences.Editor editor = preferences.edit();
-                editor.putBoolean("isLoggedIn", true);
-                editor.apply(); // 변경 사항 저장
-
-                // MainActivity로 이동하는 Intent 생성
-                Intent intent = new Intent(ServerMainActivity.this, MainActivity.class);
-                startActivity(intent);
-            }
-        });
+//        // 버튼 클릭 리스너 설정
+//        mainButton.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                 // 로그인 상태를 true로 설정
+//                SharedPreferences preferences = getSharedPreferences("LoginPrefs", MODE_PRIVATE);
+//                SharedPreferences.Editor editor = preferences.edit();
+//                editor.putBoolean("isLoggedIn", true);
+//                editor.apply(); // 변경 사항 저장
+//
+//                // MainActivity로 이동하는 Intent 생성
+//                Intent intent = new Intent(ServerMainActivity.this, MainActivity.class);
+//                startActivity(intent);
+//            }
+//        });
 
         registerButton.setOnClickListener(new View.OnClickListener() {
             @Override

@@ -53,7 +53,7 @@ public class SendServer {
         // !추가: 보내는 JSON 내용을 로그에 출력
         Log.d(TAG, "보내는 app_data.json 내용 : " + mainJsonObject.toString());
 
-        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        MediaType JSON = MediaType.parse("application/json;charset=utf-8");
         RequestBody body = RequestBody.create(mainJsonObject.toString(), JSON); // JSONObject를 문자열로 변환
 
         Request request = new Request.Builder()
@@ -223,6 +223,7 @@ public class SendServer {
 
     // 서버로 All_app.json 파일 전송하는 메소드
     public void sendAllAppDataToServer() {
+        Log.d(TAG, "sendAllAppDataToServer : 서버로 데이터 전송 시작");
         Member member = new Member(context.getApplicationContext());
         String username = member.getUsername();
 
@@ -256,6 +257,8 @@ public class SendServer {
 
                 // 최종적으로 apps 배열을 finalData에 추가
                 finalData.put("apps", appsArray);
+
+                System.out.println("서버에 보낸 정보: " + finalData.toString(4));
 
                 // OkHttp 요청을 위해 JSONObject를 String으로 변환
                 OkHttpClient client = new OkHttpClient();

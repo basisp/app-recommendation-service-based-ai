@@ -93,8 +93,7 @@ public class ServerRegister extends AppCompatActivity {
                             // 요청에 사용된 JSON 데이터를 출력
                             System.out.println("전송된 JSON2: " + jsonObject.toString()); // 터미널에 출력
                             Toast.makeText(ServerRegister.this, "회원가입 성공!", Toast.LENGTH_SHORT).show();
-                            Member member = new Member(ServerRegister.this);
-                            member.saveUsername(username); // 유저 이름을 저장
+
 
                             //사용자 파일 정리
                             startBackgroundAppUsageFetcher();

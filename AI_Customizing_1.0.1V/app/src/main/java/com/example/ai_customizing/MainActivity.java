@@ -19,6 +19,7 @@ import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.view.accessibility.AccessibilityManager;
+import android.widget.Button;
 import android.widget.ImageButton;
 
 import androidx.activity.EdgeToEdge;
@@ -33,7 +34,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.ai_customizing.adepter.AppInfoAdapter;
-import com.example.ai_customizing.callbacks.CategoryCallback;
 import com.example.ai_customizing.data.AppUsageFetcher;
 import com.example.ai_customizing.data.OnAppDataFetchedListener;
 import com.example.ai_customizing.model.AppInfo;
@@ -41,12 +41,10 @@ import com.example.ai_customizing.network.SendServer;
 import com.example.ai_customizing.network.ServerMainActivity;
 import com.example.ai_customizing.network.TokenManager;
 import com.example.ai_customizing.service.MyAccessibilityService;
-import com.example.ai_customizing.service.NewAppInstallReceiver;
+import com.example.ai_customizing.service.AppChangeReceiver;
 import com.example.ai_customizing.utils.Utils;
 
-import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -65,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
     AppInfoAdapter adapter1 = new AppInfoAdapter(appInfoList1);
     AppInfoAdapter adapter2 = new AppInfoAdapter(appInfoList2);
 
-    private final NewAppInstallReceiver newAppInstallReceiver = new NewAppInstallReceiver();
+    private final AppChangeReceiver appChangeReceiver = new AppChangeReceiver();
 
     private final ActivityResultLauncher<Intent> usageAccessLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -135,9 +133,9 @@ public class MainActivity extends AppCompatActivity {
         //내부 저장된 마지막 업데이트 시간을 받아오기 위한 선언
         sharedPreferences = this.getSharedPreferences("AppUsagePrefs", Context.MODE_PRIVATE);
 
-        //로그인 화면 전환
+
         // 버튼 클릭 리스너 설정
-        ImageButton LoginButton = findViewById(R.id.UsageLoge);
+        Button LoginButton = findViewById(R.id.button_logout);
         LoginButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -228,6 +226,9 @@ public class MainActivity extends AppCompatActivity {
         if(currentTime - lastUpdateTime >= 24 * 60 * 60 * 1000 || lastUpdateTime == 0){ //최종 업데이트로부터 24시간이 지나야 질문함 혹은 처음 실행했을 때.
             showUsageDialog();
         }
+        else{
+            Log.d(TAG, "사용 기록 정리 24시간 지나지 않음");
+        }
 
         //로그인 상태 확인
         LoginCheck();
@@ -242,7 +243,7 @@ public class MainActivity extends AppCompatActivity {
         intentFilter.addAction(Intent.ACTION_PACKAGE_CHANGED);
         intentFilter.addAction(Intent.ACTION_PACKAGE_REPLACED);
         intentFilter.addDataScheme("package");
-        registerReceiver(newAppInstallReceiver, intentFilter);
+        registerReceiver(appChangeReceiver, intentFilter);
     }
 
 
@@ -340,6 +341,8 @@ public class MainActivity extends AppCompatActivity {
                         if(Utils.readFileAll(getApplicationContext(), "All_app.json") != null) {
                             try {
                                 ExistinMainScreenTasks();
+                                SendServer sendServer = new SendServer(getApplicationContext());
+                                sendServer.sendAllAppDataToServer();
                             } catch (JSONException | PackageManager.NameNotFoundException e) {
                                 throw new RuntimeException(e);
                             }

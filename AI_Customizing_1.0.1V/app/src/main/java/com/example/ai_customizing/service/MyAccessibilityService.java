@@ -2,15 +2,22 @@
 package com.example.ai_customizing.service;
 
 import android.accessibilityservice.AccessibilityService;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 
+import androidx.core.app.NotificationCompat;
+
+import com.example.ai_customizing.R;
 import com.example.ai_customizing.model.Member;
 import com.example.ai_customizing.network.SendServer;
 import com.example.ai_customizing.utils.StaticMethodClass;
@@ -38,7 +45,46 @@ public class MyAccessibilityService extends AccessibilityService implements Cate
     private String Category;
     private final List<String> recentApps = new ArrayList<>(); // 최근 실행된 앱 목록 , 재할당 가능성 없는 경고
     private final List<Long> TimeStamp = new ArrayList<Long>();
+    SharedPreferences sharedPreferences;
 
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        // Android 8.0 이상에서 알림 채널 생성
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    "DATASYN_CHANNEL",
+                    "앱 추천 서비스",
+                    NotificationManager.IMPORTANCE_DEFAULT);
+
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
+        }
+    }
+
+    @Override
+    public void onServiceConnected() {
+        super.onServiceConnected();
+        sharedPreferences = getApplicationContext().getSharedPreferences("AppUsagePrefs", Context.MODE_PRIVATE);
+
+        // 포그라운드 서비스로 시작하기
+        Notification notification = new NotificationCompat.Builder(this, "DATASYN_CHANNEL")
+                .setContentTitle("Widget Customizing Service")
+                .setContentText("앱 추천 서비스가 실행 중입니다.")
+                .setSmallIcon(R.drawable.ic_service_icon) // 알림 아이콘
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .build();
+
+        startForeground(1, notification);
+    }
+
+    @Override
+    public void onDestroy(){
+        stopForeground(true); //포어그라운드 서비스 종료
+    }
 
     private void updateAllWidgets() {
         // AppWidgetManager 인스턴스 얻기
@@ -57,6 +103,8 @@ public class MyAccessibilityService extends AccessibilityService implements Cate
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        Log.d(TAG, "onAccessibilityEvent 호출됨");
+        lastPackageName = sharedPreferences.getString("lastPackageName", "null");
         //이벤트 타입 윈도우 상태 변화.
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             String packageName = event.getPackageName().toString();
@@ -70,7 +118,7 @@ public class MyAccessibilityService extends AccessibilityService implements Cate
                         incrementClickCount(this, packageName);
                         Log.d(TAG, "앱 실행됨: " + packageName);
                         lastPackageName = packageName;
-
+                        sharedPreferences.edit().putString("lastPackageName", lastPackageName).apply();
                         // 최근 앱 리스트에 추가
                         addRecentApp(packageName);
                         //내부 데이터에서 앱을 찾았는지 못 찾았는지.
@@ -93,7 +141,6 @@ public class MyAccessibilityService extends AccessibilityService implements Cate
 
 
                         // Json파일로 저장, 필요시 서버로 보내는 함수 포함되어있음
-
                         if(Discovery){ // 앱 정보를 찾았을 때
                             SaveJsonFile();
                         }

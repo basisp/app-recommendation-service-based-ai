@@ -21,14 +21,14 @@
             android:textStyle="bold"
             android:layout_weight="1"/>
 
-        <ImageButton
-            android:id="@+id/UsageLoge"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_marginStart="8dp"
-            android:src="@drawable/bar"
-            android:background="@drawable/button_background_selector"
-            android:contentDescription="Image Button"/>
+<!--        <ImageButton-->
+<!--            android:id="@+id/UsageLoge"-->
+<!--            android:layout_width="24dp"-->
+<!--            android:layout_height="24dp"-->
+<!--            android:layout_marginStart="8dp"-->
+<!--            android:src="@drawable/bar"-->
+<!--            android:background="@drawable/button_background_selector"-->
+<!--            android:contentDescription="Image Button"/>-->
 
     </LinearLayout>
 
@@ -51,16 +51,7 @@
             android:layout_marginTop="8dp" >
         </androidx.recyclerview.widget.RecyclerView>
     </ScrollView>
-    <!-- '더 보기' 버튼 -->
-    <Button
-        android:id="@+id/button_more_usage"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="16dp"
-        android:backgroundTint="#3F51B5"
-        android:text="@string/the_see"
-        android:textColor="@android:color/white" />
+
 
     <!-- 클릭 수 텍스트뷰 -->
     <TextView
@@ -82,13 +73,13 @@
             android:layout_marginTop="8dp" />
     </ScrollView>
 
-    <!-- '더 보기' 버튼 -->
+    <!-- '로그아웃' 버튼 -->
     <Button
-        android:id="@+id/button_more_click"
+        android:id="@+id/button_logout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/the_see"
-        android:layout_gravity="center_horizontal"
+        android:text="로그아웃"
+        android:layout_gravity="bottom|center_horizontal"
         android:layout_marginTop="16dp"
         android:backgroundTint="@color/purple_500"
         android:textColor="@android:color/white" />
