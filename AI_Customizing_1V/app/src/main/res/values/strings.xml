@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Apparent</string>
+    <string name="appwidget_text">기본 앱</string>
+    <string name="add_widget">Add widget</string>
+    <string name="app_widget_description">This is an app widget description</string>
+    <string name="app_icon_desc">앱 아이콘입니다.</string>
+    <string name="appString">앱 이미지</string>
+    <string name="accessibility_service_description">사용자 앱에 대한 접근성 서비스 지원</string>
+    <string name="appInfo">2시간</string>
+    <string name="count">실행 횟수</string>
+    <string name="the_see">더 보기</string>
+</resources>
