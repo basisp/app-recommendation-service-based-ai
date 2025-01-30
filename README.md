@@ -5,5 +5,19 @@
 
 <br>
 
+## 🧑‍💻 팀원 소개
+
+<div align=center>
+
+|      김민상      |                                                           조이환                                                           |                                                            조혜원                                                            |
+| :------------: |:-----------------------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------------------------------:|
+| <a href="https://github.com/basisp"> <img src="https://avatars.githubusercontent.com/EunjiShin" width=100px alt="_"/> </a> | <a href="https://github.com/dlghks2048"> <img src="https://avatars.githubusercontent.com/u/67488973?v=4" width=100px alt="_"/> </a> | <a href="https://github.com/J0HW"> <img src="https://avatars.githubusercontent.com/u/52368015?v=4" width=100px alt="_"/> </a> |
+| BE(Spring,Flask), 팀장 |                                                        FE                                                       |                                                          AI 학습 및 훈련                                                          | 
+
+</div>
+
+
+
+
 ## 📒Project Architecture
 ![Image](https://github.com/user-attachments/assets/acc7a9bf-3748-4372-ab48-352529dcb794)
