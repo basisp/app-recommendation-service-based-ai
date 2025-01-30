@@ -6,4 +6,4 @@
 <br>
 
 ## 📒Project Architecture
-![architecture](https://github.com/user-attachments/assets/9ab3a456-8f28-478b-96d5-975066aeea38)
+![Image](https://github.com/user-attachments/assets/acc7a9bf-3748-4372-ab48-352529dcb794)
